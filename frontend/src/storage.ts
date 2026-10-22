@@ -12,7 +12,8 @@ export async function getProject(id:string):Promise<Project>{
  const fresh=await getFreshProject(id);
  if(!saved)return fresh;
  if((saved.analysis_revision??1)>=(fresh.analysis_revision??1))return validateProject(saved);
- const r=await fetch('./demos/legacy-analysis.json',{cache:'no-cache'});const baseline=r.ok?(await r.json())[id]:undefined;
+ const baselineFile=(saved.analysis_revision??1)===2?'analysis-revision-2.json':'legacy-analysis.json';
+ const r=await fetch('./demos/'+baselineFile,{cache:'no-cache'});const baseline=r.ok?(await r.json())[id]:undefined;
  return mergeCatalogProject(validateProject(saved),fresh,baseline);
 }
 export async function audioURL(p:Project){if(catalog.some(c=>c.project_id===p.project_id))return './demos/'+p.project_id+(p.project_id==='demo'?'.wav':'.mp3');const blob=await transaction<Blob|undefined>('audio','readonly',s=>s.get(p.project_id));if(!blob)throw Error('Vuelve a cargar el archivo de audio.');return URL.createObjectURL(blob);}
