@@ -5,13 +5,16 @@ export function regular(bpm:number,anchor:number,duration:number){const dt=60/bp
 export type Extension={id:string,time_seconds:number,length:4};
 export function musicalCount(beats:number[],index:number,phase=0,groups=4,extensions:Extension[]=[]){
  const starts=extensions.map(e=>({e,start:beatAt(beats,e.time_seconds+.000001)})).filter(x=>x.start>=0).sort((a,b)=>a.start-b.start);
- let consumed=0;
+ let consumed=0,correction=0;
  for(const {e,start} of starts){
   if(index<start)break;
-  if(index<start+e.length)return {...count(start-consumed,phase,groups),extension:index-start+1,extensionId:e.id,logicalIndex:start-consumed,physicalIndex:index};
+  // An extension closes the interrupted eight; its next pulse always starts at 1.
+  // Extensions before the chosen first 1 must not shift that explicit anchor.
+  if(start-consumed>=phase){const relative=start-consumed+correction-phase;correction+=((8-relative%8)%8);}
+  if(index<start+e.length)return {...count(start-consumed+correction,phase,groups),extension:index-start+1,extensionId:e.id,logicalIndex:start-consumed,physicalIndex:index};
   consumed+=e.length;
  }
- return {...count(index-consumed,phase,groups),extension:0,extensionId:'',logicalIndex:index-consumed,physicalIndex:index};
+ return {...count(index-consumed+correction,phase,groups),extension:0,extensionId:'',logicalIndex:index-consumed,physicalIndex:index};
 }
 export function nearestBeat(beats:number[],time:number){const i=beatAt(beats,time);if(i<0)return 0;if(i+1<beats.length&&time-beats[i]>beats[i+1]-time)return i+1;return i;}
 /** Align both beat timing and dance phase to the audible instant chosen by the teacher. */

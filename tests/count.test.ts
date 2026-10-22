@@ -9,7 +9,7 @@ import {musicalCount} from '../frontend/src/count.ts';
 const beats=Array.from({length:128},(_,i)=>1+i*.5);
 test('extensión tras el último ocho: 32 + 4, sin alterar lo anterior',()=>{const ext=[{id:'x',time_seconds:17,length:4 as const}];assert.equal(musicalCount(beats,31,0,4,ext).number,8);for(let i=32;i<36;i++)assert.equal(musicalCount(beats,i,0,4,ext).extension,i-31);const after=musicalCount(beats,36,0,4,ext);assert.equal(after.number,1);assert.equal(after.group,1);assert.equal(after.lap,2);assert.equal(after.step,0);assert.equal(after.extension,0);});
 test('extensión tras el segundo ocho continúa al tercer grupo',()=>{const ext=[{id:'x',time_seconds:9,length:4 as const}];assert.equal(musicalCount(beats,15,0,4,ext).group,2);assert.equal(musicalCount(beats,16,0,4,ext).extension,1);const after=musicalCount(beats,20,0,4,ext);assert.equal(after.group,3);assert.equal(after.number,1);assert.equal(after.step,16);});
-test('múltiples extensiones, fase, saltos y eliminación',()=>{const ext=[{id:'a',time_seconds:9,length:4 as const},{id:'b',time_seconds:19,length:4 as const}];assert.equal(musicalCount(beats,40,0,4,ext).lap,2);assert.equal(musicalCount(beats,40,0,4,ext).number,1);assert.equal(musicalCount(beats,5,0,4,ext).number,6);assert.equal(musicalCount(beats,40,0,4,[]).number,1);assert.equal(musicalCount(beats,40,4,4,ext).number,5);});
+test('múltiples extensiones, fase, saltos y eliminación',()=>{const ext=[{id:'a',time_seconds:9,length:4 as const},{id:'b',time_seconds:19,length:4 as const}];assert.equal(musicalCount(beats,40,0,4,ext).lap,2);assert.equal(musicalCount(beats,40,0,4,ext).number,1);assert.equal(musicalCount(beats,5,0,4,ext).number,6);assert.equal(musicalCount(beats,40,0,4,[]).number,1);assert.equal(musicalCount(beats,40,4,4,ext).number,1);});
 import {analyzeSamples} from '../frontend/src/analyze.ts';
 import {validateProject} from '../frontend/src/model.ts';
 test('análisis navegador usa el reloj exacto y no excede la duración',()=>{const sr=11025,duration=65,samples=new Float32Array(sr*duration);for(let t=1;t<duration;t+=.5){for(let j=0;j<200;j++)samples[Math.round(t*sr)+j]=.5*Math.sin(j)*Math.exp(-j/70);}const result=analyzeSamples(samples,sr);assert.ok(result.beats.length>100);assert.ok(Math.abs(result.bpm-120)<2);assert.ok(result.beats.every((t,i,b)=>t>=0&&t<duration&&(!i||t>b[i-1])));assert.ok(Math.abs(result.beats.at(-1)!-64.5)<.15);});
@@ -22,3 +22,18 @@ test('alineación rechaza un golpe dentro de una extensión',()=>{assert.throws(
 const baseline={project_id:'demo',title:'Demo',duration_seconds:65,estimated_bpm:123,beat_times_seconds:beats,first_count_one_beat_index:0,offset_ms:0,dance_counts_per_square:4,beats_per_bar:4,beats_per_dance_count:8,markers:[],warnings:[],extensions:[]} as Project;
 test('análisis actualizado reemplaza caché sin calibrar y conserva marcas',()=>{const fresh={...baseline,analysis_revision:2,estimated_bpm:124};const saved={...baseline,markers:[{id:'m',time_seconds:10,type:'remate',label:'Mi marca',color:'#fff',notes:'',source:'manual' as const}]};const p=mergeCatalogProject(saved,fresh,baseline);assert.equal(p.estimated_bpm,124);assert.equal(p.markers[0].label,'Mi marca');});
 test('nueva publicación no borra el 1 ajustado por el profesor',()=>{const p=mergeCatalogProject({...baseline,first_count_one_beat_index:8},{...baseline,analysis_revision:2,estimated_bpm:124},baseline);assert.equal(p.first_count_one_beat_index,8);assert.equal(p.analysis_update_available,true);});
+
+test('cuarto vertical pasa directamente a 1 para cualquier fase y punto de inserción',()=>{
+ for(let phase=0;phase<8;phase++)for(let start=16;start<40;start++){
+  const ext=[{id:'x',time_seconds:beats[start],length:4 as const}];
+  assert.equal(musicalCount(beats,start-1,phase,4,ext).number,musicalCount(beats,start-1,phase).number);
+  for(let n=0;n<4;n++)assert.equal(musicalCount(beats,start+n,phase,4,ext).extension,n+1);
+  assert.equal(musicalCount(beats,start+4,phase,4,ext).number,1);
+  assert.equal(musicalCount(beats,start+5,phase,4,ext).number,2);
+ }
+});
+test('marcar un nuevo 1 después de una extensión conserva el anclaje explícito',()=>{
+ const ext=[{id:'x',time_seconds:beats[17],length:4 as const}];
+ const a=alignmentAt(beats,beats[30],0,4,ext);
+ assert.equal(musicalCount(beats,30,a.first_count_one_beat_index,4,ext).number,1);
+});
