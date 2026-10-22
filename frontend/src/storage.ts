@@ -1,10 +1,20 @@
+import {mergeCatalogProject} from './migration';
 import {validateProject,type Project} from './model';
 export type Song={project_id:string,title:string,duration_seconds:number,estimated_bpm:number,kind?:string};
 const openDB=()=>new Promise<IDBDatabase>((resolve,reject)=>{const r=indexedDB.open('cuadro-bachatero-v2',1);r.onupgradeneeded=()=>{r.result.createObjectStore('projects',{keyPath:'project_id'});r.result.createObjectStore('audio');};r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(Error('No se pudo abrir el almacenamiento del navegador.'));});
 async function transaction<T>(name:string,mode:IDBTransactionMode,action:(store:IDBObjectStore)=>IDBRequest<T>):Promise<T>{const db=await openDB();return new Promise((resolve,reject)=>{const tx=db.transaction(name,mode);const request=action(tx.objectStore(name));let result:T;request.onsuccess=()=>result=request.result;tx.oncomplete=()=>{db.close();resolve(result);};tx.onerror=()=>{db.close();reject(Error('No se pudo guardar. Revisa el espacio disponible.'));};});}
 let catalog:Song[]=[];
-export async function listSongs():Promise<Song[]>{const r=await fetch('./demos/index.json');if(!r.ok)throw Error('No se pudo cargar la biblioteca.');catalog=await r.json();const saved=await transaction<Project[]>('projects','readonly',s=>s.getAll());return [...catalog,...saved.filter(p=>!catalog.some(c=>c.project_id===p.project_id)).map(p=>({...p,kind:'local'}))];}
-export async function getProject(id:string):Promise<Project>{const saved=await transaction<Project|undefined>('projects','readonly',s=>s.get(id));if(saved)return validateProject(saved);const r=await fetch('./demos/'+encodeURIComponent(id)+'.json');if(!r.ok)throw Error('Sesión no disponible.');return validateProject(await r.json());}
+export async function listSongs():Promise<Song[]>{const r=await fetch('./demos/index.json',{cache:'no-cache'});if(!r.ok)throw Error('No se pudo cargar la biblioteca.');catalog=await r.json();const saved=await transaction<Project[]>('projects','readonly',s=>s.getAll());return [...catalog,...saved.filter(p=>!catalog.some(c=>c.project_id===p.project_id)).map(p=>({...p,kind:'local'}))];}
+export async function getFreshProject(id:string):Promise<Project>{const r=await fetch('./demos/'+encodeURIComponent(id)+'.json',{cache:'no-cache'});if(!r.ok)throw Error('Sesión no disponible.');return validateProject(await r.json());}
+export async function getProject(id:string):Promise<Project>{
+ const saved=await transaction<Project|undefined>('projects','readonly',s=>s.get(id));
+ if(!catalog.some(c=>c.project_id===id)){if(!saved)throw Error('Sesión no disponible.');return validateProject(saved);}
+ const fresh=await getFreshProject(id);
+ if(!saved)return fresh;
+ if((saved.analysis_revision??1)>=(fresh.analysis_revision??1))return validateProject(saved);
+ const r=await fetch('./demos/legacy-analysis.json',{cache:'no-cache'});const baseline=r.ok?(await r.json())[id]:undefined;
+ return mergeCatalogProject(validateProject(saved),fresh,baseline);
+}
 export async function audioURL(p:Project){if(catalog.some(c=>c.project_id===p.project_id))return './demos/'+p.project_id+(p.project_id==='demo'?'.wav':'.mp3');const blob=await transaction<Blob|undefined>('audio','readonly',s=>s.get(p.project_id));if(!blob)throw Error('Vuelve a cargar el archivo de audio.');return URL.createObjectURL(blob);}
 export async function saveProject(p:Project){await transaction('projects','readwrite',s=>s.put(validateProject(p)));}
 export async function importAudio(file:File):Promise<Project>{

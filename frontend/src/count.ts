@@ -14,3 +14,13 @@ export function musicalCount(beats:number[],index:number,phase=0,groups=4,extens
  return {...count(index-consumed,phase,groups),extension:0,extensionId:'',logicalIndex:index-consumed,physicalIndex:index};
 }
 export function nearestBeat(beats:number[],time:number){const i=beatAt(beats,time);if(i<0)return 0;if(i+1<beats.length&&time-beats[i]>beats[i+1]-time)return i+1;return i;}
+/** Align both beat timing and dance phase to the audible instant chosen by the teacher. */
+export function alignmentAt(beats:number[],time:number,offsetMs=0,groups=4,extensions:Extension[]=[]){
+ if(!beats.length||!Number.isFinite(time)||time<0)throw Error('No hay una rejilla válida para alinear.');
+ const index=nearestBeat(beats,time-offsetMs/1000);
+ const state=musicalCount(beats,index,0,groups,extensions);
+ if(state.extension)throw Error('Elige el primer golpe fuera de la extensión.');
+ const offset=(time-beats[index])*1000;
+ if(Math.abs(offset)>10000)throw Error('Elige un instante próximo a un pulso de la canción.');
+ return {first_count_one_beat_index:state.logicalIndex,offset_ms:offset};
+}

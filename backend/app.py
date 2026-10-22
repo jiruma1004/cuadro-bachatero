@@ -39,6 +39,10 @@ class Project(BaseModel):
     dance_counts_per_square: int = Field(default=4, ge=1, le=16)
     markers: list[Marker] = Field(default_factory=list, max_length=2000)
     warnings: list[str] = Field(default_factory=list)
+    analysis_revision: int = 1
+    alignment_confirmed: bool = False
+    user_edited: bool = False
+    analysis_update_available: bool = False
     extensions: list[Extension] = Field(default_factory=list, max_length=1000)
     @model_validator(mode='after')
     def validate_timing(self):
@@ -79,16 +83,22 @@ def analyze(path, pid, title):
     y, sr = librosa.load(path, sr=22050, mono=True)
     duration = len(y) / sr
     if duration <= .5 or duration > 1800: raise ValueError('Usa audio de 1 segundo a 30 minutos')
-    onset = librosa.onset.onset_strength(y=y, sr=sr)
-    tempo, frames = librosa.beat.beat_track(onset_envelope=onset, sr=sr, trim=False)
-    beats = librosa.frames_to_time(frames, sr=sr)
+    from backend.rhythm import estimate_tempo
+    hop = 128
+    onset = librosa.onset.onset_strength(y=y, sr=sr, hop_length=hop)
+    tempo = estimate_tempo(onset, sr, hop, duration)
+    if tempo:
+        _, frames = librosa.beat.beat_track(onset_envelope=onset, sr=sr, hop_length=hop, bpm=tempo, trim=True)
+        beats = librosa.frames_to_time(frames, sr=sr, hop_length=hop)
+    else:
+        beats = np.array([])
     rms = librosa.feature.rms(y=y)[0]
     times = librosa.frames_to_time(np.arange(len(rms)), sr=sr)
     active = np.flatnonzero(rms > max(float(np.max(rms)) * .04, .0001))
     start = float(times[active[0]]) if len(active) else duration
     beats = beats[(beats >= start) & (beats < duration)]
     bpm = float(np.asarray(tempo).reshape(-1)[0]) if np.asarray(tempo).size else 0
-    warnings = ['BPM y pulsos estimados: verifica el tiempo 1 al escuchar. No se detectan frases ni remates con certeza.']
+    warnings = ['Tempo medido en varios tramos; primer 1 no confirmado. Marca el golpe de entrada de los bongós que corresponda al 1.']
     if start > .2: warnings.append(f'Inicio audible estimado: {start:.2f} s; no equivale al tiempo 1.')
     if len(beats) < 8 or np.max(rms) < .001:
         warnings.append('Pocos pulsos o señal débil: utiliza BPM manual o Tap tempo.')
@@ -99,7 +109,7 @@ def analyze(path, pid, title):
     for i in range(1,len(quiet)):
         if quiet[i] and not quiet[i-1] and times[i]>start+2 and (not markers or times[i]-markers[-1]['time_seconds']>8):
             markers.append(dict(id=uuid.uuid4().hex,time_seconds=float(times[i]),type='posible cambio',label='Posible reducción de energía',source='suggestion',color='#facc15',notes='Heurística RMS; escucha y confirma. No identifica ausencia instrumental.'))
-    return Project(project_id=pid,title=title,duration_seconds=duration,estimated_bpm=bpm,beat_times_seconds=beats.tolist(),warnings=warnings,markers=markers[:60])
+    return Project(project_id=pid,title=title,duration_seconds=duration,estimated_bpm=bpm,beat_times_seconds=beats.tolist(),warnings=warnings,markers=markers[:60],analysis_revision=2)
 
 @app.get('/api/health')
 def health(): return {'ok':True,'ffmpeg':bool(shutil.which('ffmpeg'))}
@@ -141,7 +151,7 @@ def demo():
         y[int(t*sr):int(t*sr)+n]+=.55*np.sin(2*np.pi*(1000 if i%8==0 else 650)*x)*np.exp(-x*85)
     with wave.open(str(p/'audio.wav'),'wb') as f:
         f.setnchannels(1); f.setsampwidth(2); f.setframerate(sr); f.writeframes((y*32767).astype('<i2').tobytes())
-    project=Project(project_id=pid,title='Demo · 120 BPM · pulsos conocidos',duration_seconds=duration,estimated_bpm=120,beat_times_seconds=beats.tolist(),warnings=['Demo sintética con rejilla exacta; primer 1 en 1.00 s.'])
+    project=Project(project_id=pid,title='Demo · 120 BPM · pulsos conocidos',duration_seconds=duration,estimated_bpm=120,beat_times_seconds=beats.tolist(),warnings=['Demo sintética con rejilla exacta; primer 1 en 1.00 s.'],analysis_revision=2,alignment_confirmed=True)
     save(p,project); return project
 
 @app.get('/api/projects/{pid}')

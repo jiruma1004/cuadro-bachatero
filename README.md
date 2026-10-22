@@ -7,7 +7,7 @@ Aplicación didáctica de musicalidad en bachata. Diseño móvil de fantasía RP
 ## Uso
 
 1. Toca el nombre de la canción para abrir la biblioteca o cargar MP3, WAV o M4A.
-2. Reproduce y pulsa **Marcar el 1** al escuchar el comienzo del conteo.
+2. Reproduce y pulsa **Este golpe es el 1** al escuchar el comienzo del conteo.
 3. En **Editar recorrido**, coloca el cursor en el primer pulso extra y pulsa **Extensión de 4 aquí**.
 4. La extensión aparece en una columna vertical en la esquina superior izquierda: **1 abajo, 4 arriba**, siguiendo la fotografía. Se ilumina de abajo hacia arriba y después continúa el recorrido.
 
@@ -17,11 +17,11 @@ Las extensiones se marcan manualmente. La app no las detecta automáticamente y 
 
 ## Biblioteca
 
-- Bachata Bachata: 158.75 s; estimación 152 BPM.
-- Su veneno: 241.00 s; estimación 123 BPM.
-- 100 x hora: 200.39 s; estimación 123 BPM.
-- Propuesta indecente: 235.45 s; estimación 123 BPM.
-- Imitadora: 235.96 s; estimación 123 BPM.
+- Bachata Bachata: 158.75 s; estimación 154.0 BPM.
+- Su veneno: 241.00 s; estimación 124.0 BPM.
+- 100 x hora: 200.39 s; estimación 124.1 BPM.
+- Propuesta indecente: 235.45 s; estimación 123.2 BPM.
+- Imitadora: 235.96 s; estimación 126.0 BPM.
 - Práctica sintética: 120 BPM, primer 1 en 1.00 s; extensión de 4 en 17.00 s; termina a 19.00 s y comienza la vuelta 2.
 
 Las pistas musicales fueron aportadas por el usuario para esta biblioteca. Las estimaciones se obtuvieron con librosa y requieren revisión auditiva. El código no implica una licencia adicional de las grabaciones. La demo sintética permite probar el sistema independientemente de las canciones.
@@ -115,3 +115,12 @@ python3 scripts/prepare_pages.py
 ## Arte
 
 `frontend/src/assets/observatory.webp`: ilustración original generada con ImageGen integrado, comprimida a WebP. El prompt está en `ART_DIRECTION.md`. Aventura EPIK se utilizó como referencia de paleta, jerarquía y ambiente; no se copiaron personajes ni logotipos.
+
+
+## Revisión de sincronía (análisis 2)
+
+El análisis original usaba ventanas con salto de 512 muestras a 22.05 kHz: el tempo global tenía valores discretos (por ejemplo, 123.046875 BPM). Ahora las demos utilizan salto de 128 muestras, autocorrelación en varios segmentos, interpolación del pico y una mediana de estimaciones. Los pulsos se vuelven a rastrear a esa resolución; no se convierten todas las canciones al mismo BPM. El intervalo de búsqueda de 95–190 BPM es una preferencia para bachata, no un detector universal; siguen disponibles medio/doble tiempo.
+
+**El primer 1 musical no se identifica automáticamente.** La entrada de los bongós es una referencia pedagógica para que el profesor lo confirme; no todos sus golpes son un 1. Las demos musicales muestran «conteo estimado» hasta la calibración, y la demo sintética tiene un 1 conocido. Pulsa «Este golpe es el 1» en el instante que corresponde: ahora modifica tanto el desfase temporal como la fase del conteo. Antes de la entrada marcada, el cuadro espera. El botón de antes solo cambiaba el número y podía conservar una rejilla adelantada o atrasada.
+
+Las sesiones de catálogo sin calibraciones reciben el nuevo análisis automáticamente y conservan sus marcas. Si ya ajustaste la fase, el desfase o los pulsos, se preservan; en Ajustes aparece «Usar el análisis actualizado» para aplicarlo explícitamente. No se han validado auditivamente los primeros unos de las cinco canciones.

@@ -48,3 +48,18 @@ def test_extensions_persist_and_validate():
     assert client.patch('/api/projects/'+pid,json=p).status_code==422
     p['extensions']=[dict(id='wrong-length',time_seconds=17,length=8)]
     assert client.patch('/api/projects/'+pid,json=p).status_code==422
+
+def test_fine_tempo_distinguishes_close_tracks():
+    import numpy as np
+    from backend.rhythm import estimate_tempo
+    sr,hop,duration=22050,128,30
+    t=np.arange(int(duration*sr/hop))*hop/sr
+    measured=[]
+    for bpm in [124,126]:
+        phase=(t-.3)%(60/bpm)
+        distance=np.minimum(phase,60/bpm-phase)
+        onset=np.exp(-.5*(distance/.015)**2)
+        result=estimate_tempo(onset,sr,hop,duration)
+        assert abs(result-bpm)<.3
+        measured.append(result)
+    assert measured[1]-measured[0]>1.5
