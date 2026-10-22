@@ -12,7 +12,8 @@ export async function getProject(id:string):Promise<Project>{
  const fresh=await getFreshProject(id);
  if(!saved)return fresh;
  if((saved.analysis_revision??1)>=(fresh.analysis_revision??1))return validateProject(saved);
- const baselineFile=(saved.analysis_revision??1)===2?'analysis-revision-2.json':'legacy-analysis.json';
+ const revision=saved.analysis_revision??1;
+ const baselineFile=revision===3?'analysis-revision-3.json':revision===2?'analysis-revision-2.json':'legacy-analysis.json';
  const r=await fetch('./demos/'+baselineFile,{cache:'no-cache'});const baseline=r.ok?(await r.json())[id]:undefined;
  return mergeCatalogProject(validateProject(saved),fresh,baseline);
 }

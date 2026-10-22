@@ -44,7 +44,7 @@ test('los cuatro ajustes publicados son válidos y migran desde la revisión 2',
  const previous=readPreset('analysis-revision-2.json');
  for(const id of ['100-x-hora','propuesta-indecente','su-veneno','bachata']){
   const fresh=validateProject(readPreset(id+'.json'));
-  assert.equal(fresh.analysis_revision,3);
+  assert.equal(fresh.analysis_revision,id==='100-x-hora'?4:3);
   const migrated=mergeCatalogProject(previous[id],fresh,previous[id]);
   assert.deepEqual(migrated.beat_times_seconds,fresh.beat_times_seconds);
   assert.deepEqual(migrated.extensions,fresh.extensions);
@@ -56,7 +56,18 @@ test('exportación ya calibrada adopta la revisión nueva sin pedir otro ajuste'
  const fresh=validateProject(readPreset('100-x-hora.json'));
  const saved={...fresh,analysis_revision:2,user_edited:true};
  const result=mergeCatalogProject(saved,fresh,readPreset('analysis-revision-2.json')['100-x-hora']);
- assert.equal(result.analysis_revision,3);
+ assert.equal(result.analysis_revision,fresh.analysis_revision);
  assert.equal(result.analysis_update_available,false);
  assert.deepEqual(result.extensions,saved.extensions);
+});
+
+test('100 x Hora migra del ajuste anterior al JSON nuevo con su extensión',()=>{
+ const fresh=validateProject(readPreset('100-x-hora.json'));
+ const previous=readPreset('analysis-revision-3.json')['100-x-hora'];
+ const result=mergeCatalogProject(previous,fresh,previous);
+ assert.equal(result.analysis_revision,4);
+ assert.equal(result.first_count_one_beat_index,50);
+ assert.equal(result.offset_ms,-318.28328894491517);
+ assert.deepEqual(result.extensions,fresh.extensions);
+ assert.equal(result.extensions[0].time_seconds,39.9019533260118);
 });

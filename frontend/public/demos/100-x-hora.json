@@ -419,8 +419,8 @@
     199.450704333264,
     199.93418539692237
   ],
-  "first_count_one_beat_index": 48,
-  "offset_ms": -221.1031616282355,
+  "first_count_one_beat_index": 50,
+  "offset_ms": -318.28328894491517,
   "beats_per_bar": 4,
   "beats_per_dance_count": 8,
   "dance_counts_per_square": 4,
@@ -450,13 +450,13 @@
   ],
   "extensions": [
     {
-      "id": "062bbd51-51e4-43f4-8b1b-12eeb16c34d0",
-      "time_seconds": 38.93499119869512,
+      "id": "c64e18a8-58ce-40c8-8ada-f819b69c6b8d",
+      "time_seconds": 39.9019533260118,
       "length": 4
     }
   ],
   "audio_url": "./demos/100-x-hora.mp3",
-  "analysis_revision": 3,
+  "analysis_revision": 4,
   "alignment_confirmed": true,
   "user_edited": false,
   "analysis_update_available": false
