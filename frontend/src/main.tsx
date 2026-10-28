@@ -15,7 +15,7 @@ function App(){
  const toast=(s:string)=>setMessage(s);
  async function run(task:()=>Promise<void>){setBusy(true);try{await task();}catch(e){toast((e as Error).message);}finally{setBusy(false);}}
  async function load(project:Project){const generation=++loadGeneration.current;audio.current?.pause();const url=await audioURL(project);if(generation!==loadGeneration.current){if(url.startsWith('blob:'))URL.revokeObjectURL(url);return;}setSrc(url);setP(project);setTime(0);setPlaying(false);setLoop(false);setBpm(+project.estimated_bpm.toFixed(1)||120);setPanel(null);setMessage('');setSaved(true);}
- useEffect(()=>{run(async()=>{const list=await listSongs();setSongs(list);const initial=list.find(s=>s.project_id==='100-x-hora')??list[0];await load(await getProject(initial.project_id));});},[]);
+ useEffect(()=>{run(async()=>{const list=await listSongs();setSongs(list);const initial=list[0];await load(await getProject(initial.project_id));});},[]);
  useEffect(()=>()=>{if(src.startsWith('blob:'))URL.revokeObjectURL(src);},[src]);
  useEffect(()=>{if(!p)return;const timer=setTimeout(()=>{saveProject(p).then(()=>{setSaved(true);localStorage.setItem('bachata-last',p.project_id);}).catch(e=>{setSaved(false);toast(e.message);});},350);return()=>clearTimeout(timer);},[p]);
  useEffect(()=>{if(!message)return;const timer=setTimeout(()=>setMessage(''),6500);return()=>clearTimeout(timer);},[message]);
