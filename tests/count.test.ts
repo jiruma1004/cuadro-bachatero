@@ -71,3 +71,17 @@ test('100 x Hora migra del ajuste anterior al JSON nuevo con su extensión',()=>
  assert.deepEqual(result.extensions,fresh.extensions);
  assert.equal(result.extensions[0].time_seconds,39.9019533260118);
 });
+test('paquemeperdones corrige a 132 conservando el instante exacto del primer paso',()=>{
+ const id='8a288286-d0b7-4df4-9ace-acbb9f8a5ba2';
+ const old=readPreset('legacy-analysis.json')[id];
+ const fresh=validateProject(readPreset(id+'.json'));
+ const start=(p:Project)=>p.beat_times_seconds[p.first_count_one_beat_index]+p.offset_ms/1000;
+ assert.equal(start(fresh),start(old));
+ assert.equal(fresh.estimated_bpm,132);
+ for(let i=1;i<fresh.beat_times_seconds.length;i++)assert.ok(Math.abs(fresh.beat_times_seconds[i]-fresh.beat_times_seconds[i-1]-60/132)<1e-10);
+ const migrated=mergeCatalogProject(old,fresh,old);
+ assert.equal(migrated.estimated_bpm,132);
+ assert.equal(start(migrated),start(old));
+ assert.equal(migrated.markers[0].source,'suggestion');
+ assert.equal(migrated.extensions.length,0);
+});
